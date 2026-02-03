@@ -25,8 +25,12 @@ Thumbs.db
 nul
 NUL
 
-# Temporary exclusions until documentation/agent files are standardized
-docs/
+# Docs publication gate (curated only)
+docs/*
+!docs/README.md
+!docs/codemap.md
+
+# Local-only agent/session files
 CLAUDE.md
 claude.md
 STATUS.md
