@@ -21,7 +21,9 @@ class RuleEngineConfig:
 
     # Target metrics
     target_rps: int = 10000
-    p99_latency_threshold_ms: float = 50.0
+    p50_latency_threshold_ms: float = 5.0
+    p95_latency_threshold_ms: float = 15.0
+    p99_latency_threshold_ms: float = 30.0
     error_rate_threshold: float = 0.01  # 1%
 
     # User scaling
@@ -52,6 +54,15 @@ class RuleEngineConfig:
         """Load from environment variables."""
         return cls(
             target_rps=int(os.getenv("RULE_ENGINE_RPS", str(cls().target_rps))),
+            p50_latency_threshold_ms=float(
+                os.getenv("RULE_ENGINE_P50_MS", str(cls().p50_latency_threshold_ms))
+            ),
+            p95_latency_threshold_ms=float(
+                os.getenv("RULE_ENGINE_P95_MS", str(cls().p95_latency_threshold_ms))
+            ),
+            p99_latency_threshold_ms=float(
+                os.getenv("RULE_ENGINE_P99_MS", str(cls().p99_latency_threshold_ms))
+            ),
             users_normal=int(os.getenv("RULE_ENGINE_USERS", str(cls().users_normal))),
         )
 

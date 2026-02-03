@@ -2,7 +2,7 @@
 Rule Engine PREAUTH Task Set for load testing.
 
 Priority: HIGH - Core decisioning engine
-Target: 10,000+ RPS, <50ms p99 latency
+Target: 10,000+ RPS, P50 < 5ms, P95 < 15ms, P99 < 30ms
 """
 
 from datetime import UTC
@@ -18,7 +18,7 @@ class PreauthTaskset(TaskSet):
     PREAUTH evaluation task set.
 
     Tests POST /v1/evaluate/auth endpoint.
-    Expected: <50ms p99 latency
+    Expected: P50 < 5ms, P95 < 15ms, P99 < 30ms
     """
 
     min_wait = 1  # ms

@@ -94,7 +94,7 @@ uv run gen-rules --count=100
 
 ### Rule Engine (HIGH load)
 
-- Target intent: sub-50ms p99, high RPS workload
+- Target intent: P50 < 5ms, P95 < 15ms, P99 < 30ms, high RPS workload
 - Tasksets: `src/tasksets/rule_engine/`
 - Config source: `src/config/defaults.py` (`RuleEngineConfig`)
 - Typical scenario focus: `smoke`, `baseline`, `stress`, `soak`, `spike`

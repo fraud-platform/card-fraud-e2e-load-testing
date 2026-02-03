@@ -6,7 +6,7 @@ It targets three services:
 
 | Service | Stack | Load Priority | Local Target |
 |---|---|---|---|
-| Rule Engine | Quarkus/Java | High | 10,000+ RPS, p99 < 50ms |
+| Rule Engine | Quarkus/Java | High | 10,000+ RPS, P50 < 5ms, P95 < 15ms, P99 < 30ms |
 | Transaction Management | FastAPI/Python | Medium | ~50 TPS local target |
 | Rule Management | FastAPI/Python | Low | ~50 TPS local target |
 

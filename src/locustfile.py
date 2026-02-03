@@ -91,7 +91,7 @@ class RuleEngineUser(FastHttpUser):
     Load test user for the Card Fraud Rule Engine.
 
     Priority: HIGH - Core decisioning engine
-    Target: 10,000+ RPS, <50ms p99 latency
+    Target: 10,000+ RPS, P50 < 5ms, P95 < 15ms, P99 < 30ms
     Traffic Mix: 70% PREAUTH, 30% POSTAUTH
     """
 
