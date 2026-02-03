@@ -1,9 +1,12 @@
 # Setup
 
-Use this section for prerequisites and first-run setup of `card-fraud-e2e-load-testing`.
+Prerequisites, first-run onboarding, and environment bootstrap.
 
-## Baseline Commands
+## Published Files
 
-- `uv sync`
-- `uv run lt-web`
-- `uv run lt-trans-mgmt --headless --scenario smoke`
+- _No published topic file yet._
+
+## Naming Rules
+
+- Use lowercase kebab-case for new topic docs.
+- Keep this section focused; move broad cross-cutting topics to `07-reference`.
