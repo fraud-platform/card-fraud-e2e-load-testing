@@ -1,19 +1,31 @@
-# Documentation
+# Card Fraud E2E Load Testing Docs
 
-This folder follows the cross-repo docs standard for the Fraud Platform org.
+Locust-based local load and end-to-end validation harness across services.
 
-## Naming Standard
+## Documentation Standard
 
-- Use lowercase kebab-case for markdown files.
-- Use numbered lowercase folders for ordered sections.
-- Avoid mixed case, spaces, and underscores in published docs.
-- Keep archives and TODO/status notes local until reviewed.
+- File names: lowercase kebab-case (for example `local-setup.md`).
+- Section folders: numbered lowercase (`01-setup` through `07-reference`).
+- Keep docs concise and executable for local development.
+- Do not publish TODO/archive/session notes.
 
-## Publication Policy (Current)
+## Section Map
 
-Only curated docs are tracked in Git for now:
+- `01-setup/`: prerequisites, bootstrap, local environment setup.
+- `02-development/`: daily development workflow and conventions.
+- `03-api/`: API surface and contract references.
+- `04-testing/`: local test strategy and commands.
+- `05-deployment/`: local deployment approach and release notes.
+- `06-operations/`: runbooks, troubleshooting, observability.
+- `07-reference/`: glossary, decisions, and cross-repo references.
+
+## Quick Start Commands
+
+- `uv sync`
+- `uv run lt-web`
+- `uv run lt-trans-mgmt --headless --scenario smoke`
+
+## Published Files
 
 - `docs/README.md`
 - `docs/codemap.md`
-
-All other local docs remain untracked until the docs reorg is finalized.

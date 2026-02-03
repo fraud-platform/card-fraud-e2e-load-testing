@@ -1,24 +1,31 @@
 # Code Map
 
-## Core Layout
+## Repository Purpose
 
-- `src/locustfile.py`: Locust user classes and task loading.
-- `src/tasksets/`: per-service task definitions.
-  - `rule_engine/`
-  - `rule_management/`
-  - `transaction_mgmt/`
-- `src/generators/`: synthetic payload/test data generators.
-- `src/utilities/`: harness, reporting, metrics, object-store helpers.
-- `scripts/`: CLI entry points (`lt-run`, `lt-rule-engine`, etc.).
-- `tests/`: unit/integration checks for load test code.
+Locust-based local load and end-to-end validation harness across services.
 
-## Key Commands
+## Primary Areas
 
+- `app/` or `src/`: service or application implementation.
+- `tests/` or `e2e/`: automated validation.
+- `scripts/` or `cli/`: local developer tooling.
+- `docs/`: curated documentation index and section guides.
+
+## Local Commands
+
+- `uv sync`
 - `uv run lt-web`
-- `uv run lt-rule-engine --headless --scenario smoke`
-- `uv run lt-rule-mgmt --headless --scenario smoke`
 - `uv run lt-trans-mgmt --headless --scenario smoke`
 
-## Integration Role
+## Test Commands
 
-Provides local-first e2e/load validation for the full platform stack.
+- `uv run lt-rule-engine --headless --scenario smoke`
+- `uv run lt-trans-mgmt --headless --scenario smoke`
+
+## API Note
+
+No standalone business API; this repo drives traffic against other service APIs.
+
+## Deployment Note
+
+Local execution only in current phase; CI load pipelines are deferred.
