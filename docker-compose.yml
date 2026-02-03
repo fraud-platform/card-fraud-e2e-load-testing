@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Load Testing Infrastructure
+  # ==========================================================================
+  
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - fraud-test-network
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - fraud-test-network
+
+  # ==========================================================================
+  # Target Services (Optional - for full E2E testing)
+  # ==========================================================================
+  
+  rule-engine:
+    image: card-fraud-rule-engine:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - QUARKUS_HTTP_PORT=8081
+      - ENGINE_REDIS_URI=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - fraud-test-network
+    profiles:
+      - full-e2e
+
+  rule-management:
+    image: card-fraud-rule-management:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - HTTP_PORT=8000
+    networks:
+      - fraud-test-network
+    profiles:
+      - full-e2e
+
+  transaction-management:
+    image: card-fraud-transaction-management:latest
+    ports:
+      - "8002:8002"
+    environment:
+      - HTTP_PORT=8002
+    networks:
+      - fraud-test-network
+    profiles:
+      - full-e2e
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - fraud-test-network
+
+networks:
+  fraud-test-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  redis-data:

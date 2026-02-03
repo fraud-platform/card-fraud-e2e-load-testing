@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Test artifacts
+html-reports/
+coverage/
+.coverage
+.coverage.*
+
+# Environment/secrets
+.env
+.env.*
+
+# OS/editor
+.DS_Store
+Thumbs.db
+nul
+NUL
+
+# Temporary exclusions until documentation/agent files are standardized
+docs/
+CLAUDE.md
+claude.md
+STATUS.md
+status.md
+SESSION_HANDOFF.md
