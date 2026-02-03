@@ -4,6 +4,18 @@ This is the canonical instruction file for AI coding agents in this repository.
 
 Applies to all assistants (Codex, Claude, ChatGPT, Cursor, Copilot, and similar tools).
 
+## Cross-Repo Agent Standards
+
+- Secrets: Doppler-only workflows. Do not create or commit `.env` files.
+- Commands: use repository wrappers from `pyproject.toml` or `package.json`; avoid ad-hoc commands.
+- Docs publishing: keep only curated docs in `docs/01-setup` through `docs/07-reference`, plus `docs/README.md` and `docs/codemap.md`.
+- Docs naming: use lowercase kebab-case for docs files. Exceptions: `README.md`, `codemap.md`, and generated contract files.
+- Never commit docs/planning artifacts named `todo`, `status`, `archive`, or session notes.
+- If behavior, routes, scripts, ports, or setup steps change, update `README.md`, `AGENTS.md`, `docs/README.md`, and `docs/codemap.md` in the same change.
+- Keep health endpoint references consistent with current service contracts (for APIs, prefer `/api/v1/health`).
+- Preserve shared local port conventions from `card-fraud-platform` unless an explicit migration is planned.
+- Before handoff, run the repo's local lint/type/test gate and report the exact command + result.
+
 ## 1) Mission
 
 Maintain and improve this repository as a **local-first E2E/load testing suite** for the card fraud platform.
