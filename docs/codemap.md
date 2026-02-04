@@ -2,33 +2,25 @@
 
 ## Repository Purpose
 
-Locust-based local load and end-to-end validation harness across platform services.
+Locust-based local load and end-to-end validation harness across services.
 
-## Key Paths
+## Documentation Layout
 
-- `src/`: Locust users, task sets, auth helpers, and metrics utilities.
-- `scripts/`: Command entry points and report generation utilities.
-- `tests/`: Unit and integration tests for the load-testing harness.
-- `grafana/`: Dashboards for local observability during load runs.
-- `docs/`: Curated onboarding and operational documentation.
+- `01-setup/`: Setup
+- `02-development/`: Development
+- `03-api/`: API
+- `04-testing/`: Testing
+- `05-deployment/`: Deployment
+- `06-operations/`: Operations
+- `07-reference/`: Reference
 
 ## Local Commands
 
 - `uv sync`
 - `uv run lt-rule-engine --headless --scenario smoke`
 - `uv run lt-trans-mgmt --headless --scenario smoke`
-- `uv run lt-web`
 
-## Local Test Commands
+## Platform Modes
 
-- `uv run lt-rule-engine --headless --scenario smoke`
-- `uv run lt-trans-mgmt --headless --scenario smoke`
-
-## API Note
-
-This repository does not expose a business API. It drives traffic against other service APIs.
-
-## Platform Integration
-
-- Standalone mode: run this repository using its own local commands and Doppler project config.
-- Consolidated mode: run this repository through `card-fraud-platform` compose stack for cross-service validation.
+- Standalone mode: run this repository with its own local commands and Doppler config.
+- Consolidated mode: run via `card-fraud-platform` for cross-service local validation.

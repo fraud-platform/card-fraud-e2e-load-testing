@@ -1,6 +1,6 @@
 # Reference
 
-Architecture decisions, glossary, and cross-repo references.
+ADRs, glossary, and cross-repo reference material.
 
 ## Published Files
 
@@ -9,4 +9,4 @@ Architecture decisions, glossary, and cross-repo references.
 ## Naming Rules
 
 - Use lowercase kebab-case for new topic docs.
-- Keep this section focused; move broad cross-cutting topics to `07-reference`.
+- Keep each section focused on the section purpose.
