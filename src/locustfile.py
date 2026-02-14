@@ -21,7 +21,6 @@ from locust.runners import MasterRunner
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from auth.auth0 import get_auth_config, get_auth_headers  # noqa: E402
 from config.defaults import get_service_config  # noqa: E402
 from utilities.metrics import metrics_collector  # noqa: E402
 from utilities.reporting import report_generator  # noqa: E402
@@ -31,20 +30,18 @@ from utilities.reporting import report_generator  # noqa: E402
 # =============================================================================
 
 RULE_ENGINE_URL = os.getenv("RULE_ENGINE_URL", "http://localhost:8081")
+RULE_ENGINE_AUTH_URL = os.getenv("RULE_ENGINE_AUTH_URL", RULE_ENGINE_URL)
+RULE_ENGINE_MONITORING_URL = os.getenv("RULE_ENGINE_MONITORING_URL", RULE_ENGINE_AUTH_URL)
 RULE_MGMT_URL = os.getenv("RULE_MGMT_URL", "http://localhost:8000")
 TRANSACTION_MGMT_URL = os.getenv("TRANSACTION_MGMT_URL", "http://localhost:8002")
-
-# Auth0 configuration
-AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN", "")
-AUTH0_AUDIENCE = os.getenv("AUTH0_AUDIENCE", "")
-AUTH0_CLIENT_ID = os.getenv("AUTH0_CLIENT_ID", "")
-AUTH0_CLIENT_SECRET = os.getenv("AUTH0_CLIENT_SECRET", "")
+OPS_ANALYST_URL = os.getenv("OPS_ANALYST_URL", "http://localhost:8003")
 
 # Load service configurations
 SERVICE_CONFIGS = {
     "rule-engine": get_service_config("rule-engine"),
     "rule-management": get_service_config("rule-management"),
     "transaction-management": get_service_config("transaction-management"),
+    "ops-analyst-agent": get_service_config("ops-analyst-agent"),
 }
 
 
@@ -65,7 +62,16 @@ def on_locust_init(environment, **kwargs):
         environment.user_classes = enabled
 
     if isinstance(environment.runner, MasterRunner):
-        print(f"Running in distributed mode with {environment.runner.host_count} workers")
+        worker_count = getattr(environment.runner, "worker_count", None)
+        if worker_count is None:
+            clients = getattr(environment.runner, "clients", None)
+            if isinstance(clients, dict):
+                worker_count = len(clients)
+
+        if worker_count is None:
+            print("Running in distributed mode (master)")
+        else:
+            print(f"Running in distributed mode with {worker_count} workers")
 
 
 @events.test_stop.add_listener
@@ -96,26 +102,18 @@ class RuleEngineUser(FastHttpUser):
     """
 
     config = SERVICE_CONFIGS["rule-engine"]
-    host = RULE_ENGINE_URL
+    host = RULE_ENGINE_AUTH_URL
 
     def on_start(self):
         self.metrics = metrics_collector
 
-        # Get auth headers based on AUTH_MODE (none/auth0/local)
-        auth_config = get_auth_config()
-        auth_headers = get_auth_headers(auth_config)
+        self.rule_engine_auth_url = RULE_ENGINE_AUTH_URL
+        self.rule_engine_monitoring_url = RULE_ENGINE_MONITORING_URL
 
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **auth_headers,  # Add Authorization header if needed
         }
-
-        # Log auth mode for debugging
-        if auth_headers:
-            print(f"[RuleEngineUser] Auth mode: {auth_config.mode}")
-        else:
-            print(f"[RuleEngineUser] Auth mode: {auth_config.mode} (no auth headers)")
 
     tasks = []  # Loaded dynamically based on config
 
@@ -135,21 +133,10 @@ class TransactionManagementUser(FastHttpUser):
     def on_start(self):
         self.metrics = metrics_collector
 
-        # Get auth headers based on AUTH_MODE (none/auth0/local)
-        auth_config = get_auth_config()
-        auth_headers = get_auth_headers(auth_config)
-
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **auth_headers,  # Add Authorization header if needed
         }
-
-        # Log auth mode for debugging
-        if auth_headers:
-            print(f"[TransactionManagementUser] Auth mode: {auth_config.mode}")
-        else:
-            print(f"[TransactionManagementUser] Auth mode: {auth_config.mode} (no auth headers)")
 
     tasks = []  # Loaded dynamically based on config
 
@@ -170,21 +157,34 @@ class RuleManagementUser(FastHttpUser):
     def on_start(self):
         self.metrics = metrics_collector
 
-        # Get auth headers based on AUTH_MODE (none/auth0/local)
-        auth_config = get_auth_config()
-        auth_headers = get_auth_headers(auth_config)
+        self.headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+    tasks = []  # Loaded dynamically based on config
+
+
+class OpsAnalystUser(FastHttpUser):
+    """
+    Load test user for Ops Analyst Agent.
+
+    Priority: MEDIUM-LOW — advisory investigation engine
+    Target: 500 RPS, P99 <= 2s (deterministic), P99 <= 5s (hybrid)
+    Traffic Mix: 40% investigations, 40% worklist, 20% insights
+    """
+
+    config = SERVICE_CONFIGS["ops-analyst-agent"]
+    host = OPS_ANALYST_URL
+    wait_time = between(0.5, 2.0)
+
+    def on_start(self):
+        self.metrics = metrics_collector
 
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            **auth_headers,  # Add Authorization header if needed
         }
-
-        # Log auth mode for debugging
-        if auth_headers:
-            print(f"[RuleManagementUser] Auth mode: {auth_config.mode}")
-        else:
-            print(f"[RuleManagementUser] Auth mode: {auth_config.mode} (no auth headers)")
 
     tasks = []  # Loaded dynamically based on config
 
@@ -199,14 +199,14 @@ def load_tasks_for_service(service_name: str) -> dict:
     config = SERVICE_CONFIGS[service_name]
 
     if service_name == "rule-engine":
-        from tasksets.rule_engine import postauth, preauth
+        from tasksets.rule_engine import auth, monitoring
 
         tasks = {}
 
         if config.traffic_mix.preauth > 0:
-            tasks[preauth.PreauthTaskset] = int(config.traffic_mix.preauth * 100)
+            tasks[auth.AuthTaskset] = int(config.traffic_mix.preauth * 100)
         if config.traffic_mix.postauth > 0:
-            tasks[postauth.PostauthTaskset] = int(config.traffic_mix.postauth * 100)
+            tasks[monitoring.MonitoringTaskset] = int(config.traffic_mix.postauth * 100)
 
         return tasks
 
@@ -234,6 +234,20 @@ def load_tasks_for_service(service_name: str) -> dict:
 
         return tasks
 
+    elif service_name == "ops-analyst-agent":
+        from tasksets.ops_analyst import investigations, worklist
+
+        tasks = {}
+
+        if config.traffic_mix.investigations > 0:
+            tasks[investigations.InvestigationTaskset] = int(
+                config.traffic_mix.investigations * 100
+            )
+        if config.traffic_mix.worklist > 0:
+            tasks[worklist.WorklistTaskset] = int(config.traffic_mix.worklist * 100)
+
+        return tasks
+
     return {}
 
 
@@ -254,6 +268,10 @@ def auto_configure():
         services_to_test.append("rule-management")
         RuleManagementUser.tasks = load_tasks_for_service("rule-management")
 
+    if os.getenv("TEST_OPS_ANALYST", "false").lower() == "true":
+        services_to_test.append("ops-analyst-agent")
+        OpsAnalystUser.tasks = load_tasks_for_service("ops-analyst-agent")
+
     print(f"Configured services for testing: {services_to_test}")
 
 
@@ -269,6 +287,9 @@ def get_enabled_user_classes():
 
     if os.getenv("TEST_RULE_MGMT", "false").lower() == "true":
         enabled.append(RuleManagementUser)
+
+    if os.getenv("TEST_OPS_ANALYST", "false").lower() == "true":
+        enabled.append(OpsAnalystUser)
 
     return enabled
 
@@ -292,7 +313,7 @@ if __name__ == "__main__":
         "--service",
         type=str,
         default="all",
-        choices=["all", "rule-engine", "rule-mgmt", "trans-mgmt"],
+        choices=["all", "rule-engine", "rule-mgmt", "trans-mgmt", "ops-analyst"],
         help="Service to load test",
     )
 
@@ -341,6 +362,9 @@ if __name__ == "__main__":
         "true" if args.service in ["all", "trans-mgmt"] else "false"
     )
     os.environ["TEST_RULE_MGMT"] = "true" if args.service in ["all", "rule-mgmt"] else "false"
+    os.environ["TEST_OPS_ANALYST"] = (
+        "true" if args.service in ["all", "ops-analyst"] else "false"
+    )
 
     # Adjust config based on scenario
     if args.scenario == "smoke":
@@ -360,3 +384,4 @@ if __name__ == "__main__":
 
     sys.argv = ["locust"] + locust_args
     locust_main()
+

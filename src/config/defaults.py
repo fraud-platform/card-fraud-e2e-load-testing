@@ -1,7 +1,9 @@
-"""
+﻿"""
 Default configurations for load testing.
 Loads settings from environment with sensible defaults.
 """
+
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass
@@ -11,8 +13,8 @@ from dataclasses import dataclass
 class TrafficMix:
     """Traffic mix configuration."""
 
-    preauth: float = 0.70  # 70%
-    postauth: float = 0.30  # 30%
+    preauth: float = 1.0  # 100% AUTH for AUTH-only load test
+    postauth: float = 0.0  # 0% MONITORING for AUTH-only load test
 
 
 @dataclass
@@ -52,6 +54,29 @@ class RuleEngineConfig:
     @classmethod
     def from_env(cls) -> RuleEngineConfig:
         """Load from environment variables."""
+        preauth = float(
+            os.getenv("RULE_ENGINE_PREAUTH_WEIGHT", os.getenv("RULE_ENGINE_AUTH_WEIGHT", "1.0"))
+        )
+        postauth = float(
+            os.getenv(
+                "RULE_ENGINE_POSTAUTH_WEIGHT",
+                os.getenv("RULE_ENGINE_MONITORING_WEIGHT", "0.0"),
+            )
+        )
+
+        # Keep mix deterministic and valid for Locust task weighting.
+        if preauth < 0:
+            preauth = 0.0
+        if postauth < 0:
+            postauth = 0.0
+        total = preauth + postauth
+        if total <= 0:
+            preauth = 1.0
+            postauth = 0.0
+        else:
+            preauth = preauth / total
+            postauth = postauth / total
+
         return cls(
             target_rps=int(os.getenv("RULE_ENGINE_RPS", str(cls().target_rps))),
             p50_latency_threshold_ms=float(
@@ -64,6 +89,7 @@ class RuleEngineConfig:
                 os.getenv("RULE_ENGINE_P99_MS", str(cls().p99_latency_threshold_ms))
             ),
             users_normal=int(os.getenv("RULE_ENGINE_USERS", str(cls().users_normal))),
+            traffic_mix=TrafficMix(preauth=preauth, postauth=postauth),
         )
 
 
@@ -135,11 +161,50 @@ class RuleManagementConfig:
         return cls()
 
 
+@dataclass
+class OpsAnalystTrafficMix:
+    """Traffic mix for Ops Analyst Agent."""
+
+    investigations: float = 0.40
+    worklist: float = 0.40
+    insights: float = 0.20
+
+
+@dataclass
+class OpsAnalystConfig:
+    """Configuration for Ops Analyst Agent load testing.
+
+    Advisory investigation engine — moderate RPS, higher latency tolerance.
+    """
+
+    # MEDIUM-LOW priority — advisory engine
+    target_rps: int = 500
+    p99_latency_threshold_ms: float = 2000.0
+    error_rate_threshold: float = 0.01
+
+    users_light: int = 10
+    users_normal: int = 25
+    users_heavy: int = 50
+
+    traffic_mix: OpsAnalystTrafficMix | None = None
+
+    def __post_init__(self):
+        if self.traffic_mix is None:
+            self.traffic_mix = OpsAnalystTrafficMix()
+
+    @classmethod
+    def from_env(cls) -> OpsAnalystConfig:
+        return cls(
+            target_rps=int(os.getenv("OPS_ANALYST_RPS", str(cls().target_rps))),
+        )
+
+
 # Service registry
 SERVICE_CONFIGS = {
     "rule-engine": None,  # Loaded lazily
     "rule-management": None,
     "transaction-management": None,
+    "ops-analyst-agent": None,
 }
 
 
@@ -149,6 +214,7 @@ def load_config() -> dict:
         "rule-engine": get_service_config("rule-engine"),
         "rule-management": get_service_config("rule-management"),
         "transaction-management": get_service_config("transaction-management"),
+        "ops-analyst-agent": get_service_config("ops-analyst-agent"),
     }
 
 
@@ -158,6 +224,7 @@ def get_service_config(service_name: str):
         "rule-engine": RuleEngineConfig,
         "rule-management": RuleManagementConfig,
         "transaction-management": TransactionManagementConfig,
+        "ops-analyst-agent": OpsAnalystConfig,
     }
 
     if service_name not in config_map:
@@ -216,3 +283,5 @@ def get_scenario_config(scenario_name: str) -> dict:
     if scenario_name not in SCENARIOS:
         raise ValueError(f"Unknown scenario: {scenario_name}")
     return SCENARIOS[scenario_name]
+
+

@@ -24,7 +24,6 @@ This document describes the current technical design for local-first E2E and loa
 2. Configurable workload by service and scenario
 3. Synthetic-only data (never real PAN/PII)
 4. Idempotent lifecycle: seed -> test -> teardown
-5. Explicit auth behavior (`none`, `auth0`, `local`)
 6. Local-first execution against real containers where possible
 
 Related operational plan: `docs/ENTERPRISE-LOCAL-LOAD-TEST-PLAN.md`.
@@ -66,7 +65,6 @@ card-fraud-e2e-load-testing/
 |   `-- generate_rulesets.py
 |-- src/
 |   |-- locustfile.py
-|   |-- auth/auth0.py
 |   |-- config/defaults.py
 |   |-- generators/__init__.py
 |   |-- tasksets/rule_engine/
@@ -145,16 +143,12 @@ uv run lt-web
 
 ```bash
 # Rule Engine
-uv run lt-rule-engine --users=1000 --spawn-rate=100 --run-time=10m --scenario baseline --auth-mode none
 
 # Transaction Management
-uv run lt-trans-mgmt --users=200 --spawn-rate=20 --run-time=10m --scenario baseline --auth-mode none
 
 # Rule Management
-uv run lt-rule-mgmt --users=50 --spawn-rate=10 --run-time=10m --scenario baseline --auth-mode none
 
 # All services
-uv run lt-run --service all --users=1000 --spawn-rate=100 --run-time=10m --scenario baseline --auth-mode none
 ```
 
 ### 6.3 Preflight Health Checks
@@ -190,13 +184,10 @@ uv run lt-rule-engine --scenario stress --users=1000 --spawn-rate=100 --run-time
 
 ## 8. Auth Modes
 
-Supported via `--auth-mode`:
 
 - `none`: no auth header
-- `auth0`: Auth0 client credentials (token cache)
 - `local`: locally signed token
 
-Auth implementation: `src/auth/auth0.py`.
 
 ---
 
@@ -250,11 +241,6 @@ Default combined outputs:
 | `RULE_ENGINE_URL` | Rule-engine runs | `http://localhost:8081` |
 | `RULE_MGMT_URL` | Rule-mgmt runs | `http://localhost:8000` |
 | `TRANSACTION_MGMT_URL` | Trans runs | `http://localhost:8002` |
-| `AUTH_MODE` | No | `none`, `auth0`, `local` |
-| `AUTH0_DOMAIN` | For `auth0` | none |
-| `AUTH0_AUDIENCE` | For `auth0` | none |
-| `AUTH0_CLIENT_ID` | For `auth0` | none |
-| `AUTH0_CLIENT_SECRET` | For `auth0` | none |
 | `LOCAL_SIGNING_KEY` | For `local` | optional |
 | `S3_ENDPOINT_URL` | No | `http://localhost:9000` |
 | `S3_ACCESS_KEY_ID` | No | `minioadmin` |
@@ -307,7 +293,6 @@ CI/CD workflows are intentionally deferred at this stage; local reproducibility 
 Implemented:
 
 - Load commands (`lt-run`, `lt-web`, service wrappers)
-- Auth modes (`none`, `auth0`, `local`)
 - Scenario support (`smoke`, `baseline`, `stress`, `soak`, `spike`, `seed-only`)
 - Seed/test/teardown harness with run metadata
 - MinIO artifact publish/cleanup utilities

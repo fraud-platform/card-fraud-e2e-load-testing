@@ -4,7 +4,7 @@ Test strategy, local commands, and validation playbooks.
 
 ## Published Files
 
-- _No published topic file yet._
+- `rule-engine-auth-only-perf.md`
 
 ## Naming Rules
 

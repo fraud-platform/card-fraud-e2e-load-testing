@@ -42,7 +42,7 @@ Contracts, schemas, endpoint references, and integration notes.
 
 Test strategy, local commands, and validation playbooks.
 
-- _No published topic file yet._
+- `04-testing/rule-engine-auth-only-perf.md`
 
 ### `05-deployment` - Deployment
 

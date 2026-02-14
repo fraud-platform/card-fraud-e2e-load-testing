@@ -38,10 +38,24 @@ services:
   # Target Services (Optional - for full E2E testing)
   # ==========================================================================
   
-  rule-engine:
-    image: card-fraud-rule-engine:latest
+  rule-engine-auth:
+    image: card-fraud-rule-engine-auth:latest
     ports:
       - "8081:8081"
+    environment:
+      - QUARKUS_HTTP_PORT=8081
+      - ENGINE_REDIS_URI=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - fraud-test-network
+    profiles:
+      - full-e2e
+
+  rule-engine-monitoring:
+    image: card-fraud-rule-engine-monitoring:latest
+    ports:
+      - "8082:8081"
     environment:
       - QUARKUS_HTTP_PORT=8081
       - ENGINE_REDIS_URI=redis://redis:6379

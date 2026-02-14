@@ -14,7 +14,6 @@ Scope is local-first (Docker Desktop + platform compose). CI/CD can be added lat
 - Use synthetic but production-like traffic patterns.
 - Keep runs repeatable and idempotent via seed -> test -> teardown.
 - Support one-service or all-service runs from one command family.
-- Support JWT behavior explicitly with `AUTH_MODE`/`--auth-mode`.
 - Produce actionable report artifacts.
 
 ---
@@ -32,7 +31,8 @@ Scope is local-first (Docker Desktop + platform compose). CI/CD can be added lat
 ### Repositories (organization context)
 
 - `card-fraud-platform`: local infra and compose orchestration
-- `card-fraud-rule-engine`: high-priority decisioning engine
+- `card-fraud-rule-engine-auth`: high-priority AUTH decisioning engine
+- `card-fraud-rule-engine-monitoring`: MONITORING decisioning engine
 - `card-fraud-rule-management`: governance API and artifact publication
 - `card-fraud-transaction-management`: transaction ingestion/query API
 - `card-fraud-e2e-load-testing` (this repo): load scenarios, harness, reporting
@@ -78,21 +78,15 @@ This keeps network hops, container resource constraints, DB behavior, and storag
 
 ---
 
-## 6. Auth Strategy (JWT On/Off)
 
 Supported modes:
 
-- `AUTH_MODE=none`
   - Send no auth header
   - Useful when local bypass is enabled in target service
 
-- `AUTH_MODE=auth0`
-  - Auth0 client credentials flow
   - Token cache required to avoid auth provider pressure
 
-- `AUTH_MODE=local`
   - Locally signed token for dev-only compatible services
-  - Fail fast when service does not accept local token
 
 ---
 
@@ -208,17 +202,11 @@ Future tightening:
 One-command style examples:
 
 ```bash
-# Baseline rule engine without JWT
-doppler run -- uv run lt-rule-engine --scenario baseline --auth-mode none
 
-# Baseline rule engine with Auth0
-doppler run -- uv run lt-rule-engine --scenario baseline --auth-mode auth0
 
 # Seed-only rule management workflow
-doppler run -- uv run lt-rule-mgmt --scenario seed-only --auth-mode auth0
 
 # Baseline all services
-doppler run -- uv run lt-run --service all --scenario baseline --auth-mode auth0
 ```
 
 Safety expectations:
@@ -255,7 +243,6 @@ Safety expectations:
 
 Completed:
 
-- Auth mode support (`none`, `auth0`, `local`)
 - Scenario support including `spike` and `seed-only`
 - Skip-seed/skip-teardown and custom run ID flags
 - Documentation cleanup aligned to implementation
@@ -283,3 +270,5 @@ Remaining:
 Current state: phases 0-1 complete, phase 2 active, phase 3-4 pending.
 
 Last updated: 2026-02-03
+
+

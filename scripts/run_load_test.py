@@ -3,17 +3,19 @@ Main load test runner script.
 
 Usage:
     uv run lt-web  # Start Locust web UI
-    uv run lt-rule-engine --users=1000 --auth-mode none
+    uv run lt-rule-engine --users=1000
     uv run lt-run --service all --users=1000 --run-time=10m --headless
 """
 
 import argparse
 import os
 import sys
+from pathlib import Path
 
 import httpx
 from locust.main import main as locust_main
 
+from src.config.defaults import get_service_config
 from src.generators import RuleGenerator
 from src.utilities.harness import LoadTestHarness
 
@@ -85,13 +87,6 @@ def parse_args():
         help="Test scenario",
     )
     parser.add_argument(
-        "--auth-mode",
-        type=str,
-        default="none",
-        choices=["none", "auth0", "local"],
-        help="Authentication mode for requests",
-    )
-    parser.add_argument(
         "--skip-seed",
         action="store_true",
         help="Skip seed phase",
@@ -111,27 +106,61 @@ def parse_args():
     return parser.parse_args()
 
 
+def _build_locust_artifact_paths(run_id: str, service_slug: str) -> tuple[str, str]:
+    """Create deterministic per-run artifact paths for Locust output."""
+    base = Path("html-reports") / "runs" / run_id / "locust"
+    base.mkdir(parents=True, exist_ok=True)
+    html_path = base / f"{service_slug}.html"
+    csv_prefix = base / service_slug
+    return str(html_path), str(csv_prefix)
+
+
+def _run_locust(args: list[str]) -> int:
+    """
+    Execute Locust and normalize its SystemExit behavior.
+
+    Returns process exit code so callers can preserve control flow
+    and still write metadata in finally blocks.
+    """
+    sys.argv = ["locust"] + args
+    try:
+        locust_main()
+        return 0
+    except SystemExit as exc:
+        code = exc.code
+        if code is None:
+            return 0
+        if isinstance(code, int):
+            if code != 0:
+                raise
+            return 0
+        return 0
+
+
 def run_rule_engine(
     users: int,
     spawn_rate: int,
     run_time: str,
     headless: bool,
-    auth_mode: str = "none",
     harness: LoadTestHarness | None = None,
-):
+) -> dict:
     """Run Rule Engine load test."""
     print(
         f"Starting Rule Engine load test: users={users}, "
-        f"spawn={spawn_rate}/s, duration={run_time}, auth={auth_mode}"
+        f"spawn={spawn_rate}/s, duration={run_time}"
     )
 
-    # Set auth mode environment variable for Locust tasks to read
-    os.environ["AUTH_MODE"] = auth_mode
     os.environ["TEST_RULE_ENGINE"] = "true"
     os.environ["TEST_TRANSACTION_MGMT"] = "false"
     os.environ["TEST_RULE_MGMT"] = "false"
+    # Keep AUTH-only deterministic regardless of environment defaults.
+    os.environ["RULE_ENGINE_PREAUTH_WEIGHT"] = "1.0"
+    os.environ["RULE_ENGINE_POSTAUTH_WEIGHT"] = "0.0"
     if harness:
         os.environ["LOADTEST_RUN_ID"] = harness.run_id
+
+    run_id = harness.run_id if harness else "adhoc"
+    html_path, csv_prefix = _build_locust_artifact_paths(run_id, "rule-engine")
 
     args = [
         "-f",
@@ -143,9 +172,9 @@ def run_rule_engine(
         "--run-time",
         run_time,
         "--html",
-        "html-reports/locust/rule-engine.html",
+        html_path,
         "--csv",
-        "html-reports/locust/rule-engine",
+        csv_prefix,
     ]
 
     if headless:
@@ -156,8 +185,8 @@ def run_rule_engine(
         print("\nRunning with harness seed/teardown...")
         # Note: Actual seeding happens in main() before this call
 
-    sys.argv = ["locust"] + args
-    locust_main()
+    exit_code = _run_locust(args)
+    return {"html": html_path, "csv_prefix": csv_prefix, "exit_code": exit_code}
 
 
 def run_rule_management(
@@ -165,21 +194,22 @@ def run_rule_management(
     spawn_rate: int,
     run_time: str,
     headless: bool,
-    auth_mode: str = "none",
     harness: LoadTestHarness | None = None,
-):
+) -> dict:
     """Run Rule Management load test."""
     print(
         f"Starting Rule Mgmt load test: users={users}, "
-        f"spawn={spawn_rate}/s, duration={run_time}, auth={auth_mode}"
+        f"spawn={spawn_rate}/s, duration={run_time}"
     )
 
-    os.environ["AUTH_MODE"] = auth_mode
     os.environ["TEST_RULE_ENGINE"] = "false"
     os.environ["TEST_TRANSACTION_MGMT"] = "false"
     os.environ["TEST_RULE_MGMT"] = "true"
     if harness:
         os.environ["LOADTEST_RUN_ID"] = harness.run_id
+
+    run_id = harness.run_id if harness else "adhoc"
+    html_path, csv_prefix = _build_locust_artifact_paths(run_id, "rule-mgmt")
 
     args = [
         "-f",
@@ -191,16 +221,16 @@ def run_rule_management(
         "--run-time",
         run_time,
         "--html",
-        "html-reports/locust/rule-mgmt.html",
+        html_path,
         "--csv",
-        "html-reports/locust/rule-mgmt",
+        csv_prefix,
     ]
 
     if headless:
         args.append("--headless")
 
-    sys.argv = ["locust"] + args
-    locust_main()
+    exit_code = _run_locust(args)
+    return {"html": html_path, "csv_prefix": csv_prefix, "exit_code": exit_code}
 
 
 def run_transaction_management(
@@ -208,21 +238,22 @@ def run_transaction_management(
     spawn_rate: int,
     run_time: str,
     headless: bool,
-    auth_mode: str = "none",
     harness: LoadTestHarness | None = None,
-):
+) -> dict:
     """Run Transaction Management load test."""
     print(
         f"Starting Transaction Mgmt: users={users}, "
-        f"spawn={spawn_rate}/s, duration={run_time}, auth={auth_mode}"
+        f"spawn={spawn_rate}/s, duration={run_time}"
     )
 
-    os.environ["AUTH_MODE"] = auth_mode
     os.environ["TEST_RULE_ENGINE"] = "false"
     os.environ["TEST_TRANSACTION_MGMT"] = "true"
     os.environ["TEST_RULE_MGMT"] = "false"
     if harness:
         os.environ["LOADTEST_RUN_ID"] = harness.run_id
+
+    run_id = harness.run_id if harness else "adhoc"
+    html_path, csv_prefix = _build_locust_artifact_paths(run_id, "trans-mgmt")
 
     args = [
         "-f",
@@ -234,16 +265,16 @@ def run_transaction_management(
         "--run-time",
         run_time,
         "--html",
-        "html-reports/locust/trans-mgmt.html",
+        html_path,
         "--csv",
-        "html-reports/locust/trans-mgmt",
+        csv_prefix,
     ]
 
     if headless:
         args.append("--headless")
 
-    sys.argv = ["locust"] + args
-    locust_main()
+    exit_code = _run_locust(args)
+    return {"html": html_path, "csv_prefix": csv_prefix, "exit_code": exit_code}
 
 
 def get_scenario_params(
@@ -278,15 +309,19 @@ def main():
         enable_seed=not args.skip_seed,
         enable_teardown=not args.skip_teardown,
     )
+    if harness.start_time is None:
+        from datetime import datetime
+        harness.start_time = datetime.now()
 
     print(f"\n{'=' * 70}")
     print(f"LOAD TEST RUN - ID: {harness.run_id}")
     print(f"Service: {args.service}")
     print(f"Scenario: {args.scenario}")
-    print(f"Auth Mode: {args.auth_mode}")
     print(f"Users: {users}, Spawn Rate: {spawn_rate}/s, Duration: {run_time}")
     print(f"Seed: {harness.enable_seed}, Teardown: {harness.enable_teardown}")
     print(f"{'=' * 70}\n")
+
+    run_artifacts: dict[str, str] = {}
 
     if not _preflight_services(args.service):
         print("\nERROR: One or more target services are unavailable.")
@@ -296,8 +331,8 @@ def main():
     try:
         # SEED PHASE
         if harness.enable_seed:
-            # For rule-mgmt service, seed rulesets
-            if args.service in ["rule-mgmt", "all"]:
+            # Seed rulesets for rule-engine, rule-mgmt, or all services
+            if args.service in ["rule-engine", "rule-mgmt", "all"]:
                 rule_gen = RuleGenerator(seed=42)
                 rulesets = [
                     rule_gen.generate_ruleset(ruleset_type="PREAUTH"),
@@ -316,11 +351,14 @@ def main():
         elif args.service == "all":
             # Run all user classes in a single Locust run (no -T filter).
             # locustfile.py controls which services are active via TEST_* env vars.
-            os.environ["AUTH_MODE"] = args.auth_mode
             os.environ["TEST_RULE_ENGINE"] = "true"
+            os.environ["RULE_ENGINE_PREAUTH_WEIGHT"] = "1.0"
+            os.environ["RULE_ENGINE_POSTAUTH_WEIGHT"] = "0.0"
             os.environ["TEST_TRANSACTION_MGMT"] = "true"
             os.environ["TEST_RULE_MGMT"] = "true"
             os.environ["LOADTEST_RUN_ID"] = harness.run_id
+            html_path, csv_prefix = _build_locust_artifact_paths(harness.run_id, "all-services")
+            run_artifacts = {"html": html_path, "csv_prefix": csv_prefix}
 
             args_list = [
                 "--users",
@@ -332,31 +370,75 @@ def main():
                 "-f",
                 LOCUSTFILE,
                 "--html",
-                "html-reports/locust/all-services.html",
+                html_path,
                 "--csv",
-                "html-reports/locust/all-services",
+                csv_prefix,
             ]
             if args.headless:
                 args_list.append("--headless")
 
-            sys.argv = ["locust"] + args_list
-            locust_main()
+            run_artifacts["exit_code"] = _run_locust(args_list)
         elif args.service == "rule-engine":
-            run_rule_engine(users, spawn_rate, run_time, args.headless, args.auth_mode, harness)
+            run_artifacts = run_rule_engine(users, spawn_rate, run_time, args.headless, harness)
         elif args.service == "rule-mgmt":
-            run_rule_management(users, spawn_rate, run_time, args.headless, args.auth_mode, harness)
+            run_artifacts = run_rule_management(users, spawn_rate, run_time, args.headless, harness)
         elif args.service == "trans-mgmt":
-            run_transaction_management(
-                users, spawn_rate, run_time, args.headless, args.auth_mode, harness
+            run_artifacts = run_transaction_management(
+                users, spawn_rate, run_time, args.headless, harness
             )
 
     except KeyboardInterrupt:
         print("\n\nInterrupted by user.")
     finally:
+        if harness.end_time is None:
+            from datetime import datetime
+            harness.end_time = datetime.now()
         # TEARDOWN PHASE
         if harness.enable_teardown:
             harness.teardown()
-            harness.write_run_metadata()
+        urls = {
+            "rule-engine": os.getenv("RULE_ENGINE_AUTH_URL", os.getenv("RULE_ENGINE_URL", "http://localhost:8081")),
+            "rule-engine-auth": os.getenv("RULE_ENGINE_AUTH_URL", os.getenv("RULE_ENGINE_URL", "http://localhost:8081")),
+            "rule-engine-monitoring": os.getenv("RULE_ENGINE_MONITORING_URL", "http://localhost:8082"),
+            "rule-mgmt": os.getenv("RULE_MGMT_URL", "http://localhost:8000"),
+            "trans-mgmt": os.getenv("TRANSACTION_MGMT_URL", "http://localhost:8002"),
+        }
+        container_limits = {
+            "rule_engine_cpu": os.getenv("RULE_ENGINE_CPU_LIMIT", os.getenv("DOCKER_CPU_LIMIT")),
+            "rule_engine_memory": os.getenv(
+                "RULE_ENGINE_MEMORY_LIMIT",
+                os.getenv("RULE_ENGINE_MEM_LIMIT", os.getenv("DOCKER_MEMORY_LIMIT")),
+            ),
+        }
+        container_limits = {k: v for k, v in container_limits.items() if v}
+
+        metadata = {
+            "service": args.service,
+            "scenario": args.scenario,
+            "users": users,
+            "spawn_rate": spawn_rate,
+            "run_time": run_time,
+            "auth_strategy": "api-gateway",
+            "service_urls": urls,
+            "container_limits": container_limits,
+            "redis_client_settings": {
+                "max_pool_size": os.getenv("REDIS_MAX_POOL_SIZE"),
+                "max_waiting_handlers": os.getenv("REDIS_MAX_WAITING_HANDLERS"),
+                "timeout": os.getenv("REDIS_TIMEOUT"),
+                "protocol": os.getenv("REDIS_PROTOCOL"),
+            },
+            "traffic_mix": {
+                "rule_engine_auth_weight": (
+                    get_service_config("rule-engine").traffic_mix.preauth
+                ),
+                "rule_engine_monitoring_weight": (
+                    get_service_config("rule-engine").traffic_mix.postauth
+                ),
+            },
+            "artifacts": run_artifacts,
+        }
+
+        harness.write_run_metadata(metadata=metadata)
 
 
 def web_ui():

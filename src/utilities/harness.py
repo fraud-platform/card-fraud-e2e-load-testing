@@ -24,7 +24,6 @@ from pathlib import Path
 
 try:
     # Package-style imports (used by console script entry points).
-    from src.auth.auth0 import validate_auth_setup
     from src.utilities.minio_client import (
         cleanup_run_artifacts,
         get_run_artifacts,
@@ -32,7 +31,6 @@ try:
     )
 except ModuleNotFoundError:
     # Backward-compatible imports when running with src on PYTHONPATH.
-    from auth.auth0 import validate_auth_setup
     from utilities.minio_client import (
         cleanup_run_artifacts,
         get_run_artifacts,
@@ -99,12 +97,6 @@ class LoadTestHarness:
         print(f"{'=' * 60}\n")
 
         self.start_time = datetime.now()
-
-        # Validate auth setup
-        print("Validating authentication...")
-        if not validate_auth_setup():
-            print("ERROR: Auth validation failed")
-            return False
 
         # Publish rulesets
         if rulesets:
@@ -207,7 +199,11 @@ class LoadTestHarness:
 
         return True
 
-    def write_run_metadata(self, output_dir: str = "html-reports") -> Path:
+    def write_run_metadata(
+        self,
+        output_dir: str = "html-reports",
+        metadata: dict | None = None,
+    ) -> Path:
         """
         Write run metadata to file for tracking.
 
@@ -220,7 +216,7 @@ class LoadTestHarness:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
-        metadata = {
+        base_metadata = {
             "run_id": self.run_id,
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
@@ -229,10 +225,12 @@ class LoadTestHarness:
             "seed_enabled": self.enable_seed,
             "teardown_enabled": self.enable_teardown,
         }
+        if metadata:
+            base_metadata.update(metadata)
 
         metadata_file = output_path / f"run-metadata-{self.run_id}.json"
         with open(metadata_file, "w") as f:
-            json.dump(metadata, f, indent=2)
+            json.dump(base_metadata, f, indent=2)
 
         return metadata_file
 

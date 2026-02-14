@@ -56,36 +56,29 @@ class ReportGenerator:
         # Get stats from Locust environment
         stats = environment.stats
 
-        # Calculate percentiles
-        response_times = []
-        for entry in stats.entries.values():
-            response_times.extend([entry.avg_response_time] * entry.num_requests)
-
-        if response_times:
-            response_times.sort()
-            n = len(response_times)
-            p95_idx = int(n * 0.95)
-            p99_idx = int(n * 0.99)
-            p95 = response_times[p95_idx] if n > p95_idx else 0
-            p99 = response_times[p99_idx] if n > p99_idx else 0
-            avg = sum(response_times) / n
+        # Use Locust's histogram-based percentiles from aggregate stats.
+        total = stats.total
+        if total.num_requests > 0:
+            p95 = float(total.get_response_time_percentile(0.95))
+            p99 = float(total.get_response_time_percentile(0.99))
+            avg = float(total.avg_response_time)
         else:
-            p95 = p99 = avg = 0
+            p95 = p99 = avg = 0.0
 
         # Determine pass/fail
-        fail_ratio = stats.total.fail_ratio
+        fail_ratio = total.fail_ratio
         pass_fail = "PASS" if fail_ratio < 0.01 else "FAIL"
 
         summary = RunSummary(
             run_id=datetime.now().strftime("%Y%m%d-%H%M%S"),
             start_time=datetime.fromtimestamp(stats.start_time or datetime.now().timestamp()),
             end_time=datetime.now(),
-            total_requests=stats.total.num_requests,
-            total_failures=stats.total.num_failures,
+            total_requests=total.num_requests,
+            total_failures=total.num_failures,
             avg_response_time_ms=avg,
             p95_response_time_ms=p95,
             p99_response_time_ms=p99,
-            rps=stats.total.current_rps,
+            rps=total.current_rps,
             pass_fail=pass_fail,
         )
 

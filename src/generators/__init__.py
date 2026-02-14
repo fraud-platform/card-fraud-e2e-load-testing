@@ -38,7 +38,8 @@ class TransactionTemplate:
             "ip": fake.ipv4(),
             "amount": self._generate_amount(),
             "currency": self.currency,
-            "country": self.country,
+            # Use country_code to match rule-engine request schema.
+            "country_code": self.country,
             "billing_address": {
                 "city": fake.city(),
                 "state": fake.state_abbr(),
@@ -212,12 +213,55 @@ class RuleGenerator:
         """Generate a batch of rules."""
         return [self.generate(rule_type) for _ in range(count)]
 
-    def generate_ruleset(self, ruleset_type: str = "PREAUTH", rule_count: int = 5) -> dict:
-        """Generate a complete ruleset with multiple rules."""
+    def generate_ruleset(
+        self,
+        ruleset_type: str = "PREAUTH",
+        rule_count: int = 5,
+        country: str = "US",
+        environment: str = "local",
+    ) -> dict:
+        """
+        Generate a complete ruleset with multiple rules.
+
+        Args:
+            ruleset_type: "PREAUTH" (maps to CARD_AUTH) or "POSTAUTH" (maps to CARD_MONITORING)
+            rule_count: Number of rules to generate
+            country: Country code (e.g., "US", "IN")
+            environment: Environment (e.g., "local", "prod")
+
+        Returns:
+            Ruleset dict with standard rule management format
+        """
         rules = self.generate_batch(rule_count, ruleset_type)
+
+        # Map ruleset type to standard ruleset keys
+        ruleset_key_map = {
+            "PREAUTH": "CARD_AUTH",
+            "POSTAUTH": "CARD_MONITORING",
+        }
+        ruleset_key = ruleset_key_map.get(ruleset_type, "CARD_AUTH")
+
+        # Determine region from country (simplified mapping)
+        region_map = {
+            "US": "AMERICAS",
+            "CA": "AMERICAS",
+            "MX": "AMERICAS",
+            "BR": "AMERICAS",
+            "IN": "APAC",
+            "SG": "APAC",
+            "AU": "APAC",
+            "GB": "EMEA",
+            "DE": "EMEA",
+            "FR": "EMEA",
+        }
+        region = region_map.get(country, "GLOBAL")
 
         return {
             "ruleset_id": f"rs_{uuid.uuid4().hex[:12]}",
+            "ruleset_key": ruleset_key,
+            "country": country,
+            "region": region,
+            "environment": environment,
             "version": 1,
             "type": ruleset_type,
             "enabled": True,
@@ -245,3 +289,4 @@ if __name__ == "__main__":
 
     print("\nSample rule:")
     print(json.dumps(rule_gen.generate(), indent=2))
+

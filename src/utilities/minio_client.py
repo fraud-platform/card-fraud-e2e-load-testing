@@ -16,6 +16,8 @@ try:
 except ImportError:
     boto3 = None
 
+import hashlib
+
 
 def get_minio_client():
     """Create and return a MinIO/boto3 client."""
@@ -178,15 +180,19 @@ def publish_ruleset(
     run_id: str | None = None,
 ) -> str | None:
     """
-    Publish a ruleset to MinIO.
+    Publish a ruleset to MinIO using standard rule management paths.
+
+    Publishes both:
+    - ruleset.json artifact: rulesets/{env}/{country}/{ruleset_key}/v{version}/ruleset.json
+    - manifest.json pointer: rulesets/{env}/{country}/{ruleset_key}/manifest.json
 
     Args:
-        ruleset_data: Ruleset dictionary
+        ruleset_data: Ruleset dictionary with keys: ruleset_key, country, version, environment
         bucket: S3 bucket name
-        run_id: Optional run ID for tagging
+        run_id: Optional run ID for metadata tagging
 
     Returns:
-        S3 key of published ruleset or None if error
+        S3 key of published ruleset artifact or None if error
     """
     if run_id is None:
         run_id = str(uuid4())[:8]
@@ -194,24 +200,58 @@ def publish_ruleset(
     if bucket is None:
         bucket = os.getenv("S3_BUCKET_NAME", "fraud-gov-artifacts")
 
-    ruleset_id = ruleset_data.get("ruleset_id", f"rs_{uuid4().hex[:12]}")
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    # Extract required fields
+    ruleset_key = ruleset_data.get("ruleset_key", "CARD_AUTH")
+    country = ruleset_data.get("country", "global")
+    version = ruleset_data.get("version", 1)
+    environment = ruleset_data.get("environment", "local")
+    region = ruleset_data.get("region", "AMERICAS")
 
-    # Key format: loadtest/{run_id}/rulesets/{ruleset_id}/{timestamp}.json
-    key = f"loadtest/{run_id}/rulesets/{ruleset_id}/{timestamp}.json"
+    # Standard path format: rulesets/{env}/{country}/{ruleset_key}/v{version}/ruleset.json
+    artifact_key = f"rulesets/{environment}/{country}/{ruleset_key}/v{version}/ruleset.json"
+    manifest_key = f"rulesets/{environment}/{country}/{ruleset_key}/manifest.json"
 
-    # Add metadata
+    # Add metadata (ISO 8601 format for compatibility with Jackson Instant deserialization)
+    timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     metadata = {
         "run_id": run_id,
-        "ruleset_id": ruleset_id,
+        "ruleset_key": ruleset_key,
+        "country": country,
+        "environment": environment,
+        "version": str(version),
         "published_at": timestamp,
         "source": "load-test",
     }
 
-    if upload_artifact(bucket, key, ruleset_data, metadata):
-        return key
+    # Calculate SHA-256 checksum of ruleset artifact
+    ruleset_json = json.dumps(ruleset_data, indent=2).encode("utf-8")
+    checksum = hashlib.sha256(ruleset_json).hexdigest()
 
-    return None
+    # Upload ruleset artifact
+    if not upload_artifact(bucket, artifact_key, ruleset_data, metadata):
+        return None
+
+    # Generate manifest.json content (matches rule management schema)
+    artifact_uri = f"s3://{bucket}/{artifact_key}"
+    manifest_content = {
+        "schema_version": "1.1",
+        "environment": environment,
+        "region": region,
+        "country": country,
+        "ruleset_key": ruleset_key,
+        "ruleset_version": version,
+        "artifact_uri": artifact_uri,
+        "checksum": f"sha256:{checksum}",
+        "published_at": timestamp,
+    }
+
+    # Upload manifest.json pointer
+    if not upload_artifact(bucket, manifest_key, manifest_content, metadata):
+        print(f"Warning: Failed to upload manifest for {ruleset_key}")
+        return artifact_key  # Return artifact key even if manifest fails
+
+    print(f"Published ruleset: {ruleset_key} v{version} for country={country}")
+    return artifact_key
 
 
 def cleanup_run_artifacts(bucket: str, run_id: str) -> int:
