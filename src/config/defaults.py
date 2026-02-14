@@ -1,4 +1,4 @@
-﻿"""
+"""
 Default configurations for load testing.
 Loads settings from environment with sensible defaults.
 """
@@ -54,15 +54,23 @@ class RuleEngineConfig:
     @classmethod
     def from_env(cls) -> RuleEngineConfig:
         """Load from environment variables."""
-        preauth = float(
-            os.getenv("RULE_ENGINE_PREAUTH_WEIGHT", os.getenv("RULE_ENGINE_AUTH_WEIGHT", "1.0"))
-        )
-        postauth = float(
-            os.getenv(
-                "RULE_ENGINE_POSTAUTH_WEIGHT",
-                os.getenv("RULE_ENGINE_MONITORING_WEIGHT", "0.0"),
+        mode = os.getenv("RULE_ENGINE_MODE", "").strip().lower()
+        if mode == "monitoring":
+            preauth = 0.0
+            postauth = 1.0
+        elif mode == "auth":
+            preauth = 1.0
+            postauth = 0.0
+        else:
+            preauth = float(
+                os.getenv("RULE_ENGINE_PREAUTH_WEIGHT", os.getenv("RULE_ENGINE_AUTH_WEIGHT", "1.0"))
             )
-        )
+            postauth = float(
+                os.getenv(
+                    "RULE_ENGINE_POSTAUTH_WEIGHT",
+                    os.getenv("RULE_ENGINE_MONITORING_WEIGHT", "0.0"),
+                )
+            )
 
         # Keep mix deterministic and valid for Locust task weighting.
         if preauth < 0:

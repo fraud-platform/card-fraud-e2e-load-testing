@@ -23,12 +23,14 @@ LOCUSTFILE = "src/locustfile.py"
 
 SERVICE_URL_ENV = {
     "rule-engine": ("RULE_ENGINE_URL", "http://localhost:8081"),
+    "rule-engine-monitoring": ("RULE_ENGINE_MONITORING_URL", "http://localhost:8082"),
     "rule-mgmt": ("RULE_MGMT_URL", "http://localhost:8000"),
     "trans-mgmt": ("TRANSACTION_MGMT_URL", "http://localhost:8002"),
 }
 
 SERVICE_HEALTH_PATH = {
     "rule-engine": "/v1/evaluate/health",
+    "rule-engine-monitoring": "/v1/evaluate/health",
     "rule-mgmt": "/api/v1/health",
     "trans-mgmt": "/api/v1/health",
 }
@@ -70,7 +72,7 @@ def parse_args():
         "--service",
         type=str,
         default="all",
-        choices=["all", "rule-engine", "rule-mgmt", "trans-mgmt"],
+        choices=["all", "rule-engine", "rule-engine-monitoring", "rule-mgmt", "trans-mgmt"],
         help="Service to load test",
     )
 
@@ -153,9 +155,7 @@ def run_rule_engine(
     os.environ["TEST_RULE_ENGINE"] = "true"
     os.environ["TEST_TRANSACTION_MGMT"] = "false"
     os.environ["TEST_RULE_MGMT"] = "false"
-    # Keep AUTH-only deterministic regardless of environment defaults.
-    os.environ["RULE_ENGINE_PREAUTH_WEIGHT"] = "1.0"
-    os.environ["RULE_ENGINE_POSTAUTH_WEIGHT"] = "0.0"
+    os.environ["RULE_ENGINE_MODE"] = "auth"
     if harness:
         os.environ["LOADTEST_RUN_ID"] = harness.run_id
 
@@ -184,6 +184,52 @@ def run_rule_engine(
     if harness and harness.enable_seed:
         print("\nRunning with harness seed/teardown...")
         # Note: Actual seeding happens in main() before this call
+
+    exit_code = _run_locust(args)
+    return {"html": html_path, "csv_prefix": csv_prefix, "exit_code": exit_code}
+
+
+
+def run_rule_engine_monitoring(
+    users: int,
+    spawn_rate: int,
+    run_time: str,
+    headless: bool,
+    harness: LoadTestHarness | None = None,
+) -> dict:
+    """Run Rule Engine load test with MONITORING-only traffic."""
+    print(
+        f"Starting Rule Engine MONITORING load test: users={users}, "
+        f"spawn={spawn_rate}/s, duration={run_time}"
+    )
+
+    os.environ["TEST_RULE_ENGINE"] = "true"
+    os.environ["TEST_TRANSACTION_MGMT"] = "false"
+    os.environ["TEST_RULE_MGMT"] = "false"
+    os.environ["RULE_ENGINE_MODE"] = "monitoring"
+    if harness:
+        os.environ["LOADTEST_RUN_ID"] = harness.run_id
+
+    run_id = harness.run_id if harness else "adhoc"
+    html_path, csv_prefix = _build_locust_artifact_paths(run_id, "rule-engine-monitoring")
+
+    args = [
+        "-f",
+        LOCUSTFILE,
+        "--users",
+        str(users),
+        "--spawn-rate",
+        str(spawn_rate),
+        "--run-time",
+        run_time,
+        "--html",
+        html_path,
+        "--csv",
+        csv_prefix,
+    ]
+
+    if headless:
+        args.append("--headless")
 
     exit_code = _run_locust(args)
     return {"html": html_path, "csv_prefix": csv_prefix, "exit_code": exit_code}
@@ -332,7 +378,7 @@ def main():
         # SEED PHASE
         if harness.enable_seed:
             # Seed rulesets for rule-engine, rule-mgmt, or all services
-            if args.service in ["rule-engine", "rule-mgmt", "all"]:
+            if args.service in ["rule-engine", "rule-engine-monitoring", "rule-mgmt", "all"]:
                 rule_gen = RuleGenerator(seed=42)
                 rulesets = [
                     rule_gen.generate_ruleset(ruleset_type="PREAUTH"),
@@ -352,8 +398,7 @@ def main():
             # Run all user classes in a single Locust run (no -T filter).
             # locustfile.py controls which services are active via TEST_* env vars.
             os.environ["TEST_RULE_ENGINE"] = "true"
-            os.environ["RULE_ENGINE_PREAUTH_WEIGHT"] = "1.0"
-            os.environ["RULE_ENGINE_POSTAUTH_WEIGHT"] = "0.0"
+            os.environ["RULE_ENGINE_MODE"] = "auth"
             os.environ["TEST_TRANSACTION_MGMT"] = "true"
             os.environ["TEST_RULE_MGMT"] = "true"
             os.environ["LOADTEST_RUN_ID"] = harness.run_id
@@ -380,6 +425,8 @@ def main():
             run_artifacts["exit_code"] = _run_locust(args_list)
         elif args.service == "rule-engine":
             run_artifacts = run_rule_engine(users, spawn_rate, run_time, args.headless, harness)
+        elif args.service == "rule-engine-monitoring":
+            run_artifacts = run_rule_engine_monitoring(users, spawn_rate, run_time, args.headless, harness)
         elif args.service == "rule-mgmt":
             run_artifacts = run_rule_management(users, spawn_rate, run_time, args.headless, harness)
         elif args.service == "trans-mgmt":
@@ -478,6 +525,12 @@ def cli_rule_engine():
     main()
 
 
+def cli_rule_engine_monitoring():
+    """Console entrypoint: run Rule Engine MONITORING only."""
+    _inject_service_arg("rule-engine-monitoring")
+    main()
+
+
 def cli_rule_management():
     """Console entrypoint: run Rule Management only."""
     _inject_service_arg("rule-mgmt")
@@ -492,3 +545,7 @@ def cli_transaction_management():
 
 if __name__ == "__main__":
     main()
+
+
+
+

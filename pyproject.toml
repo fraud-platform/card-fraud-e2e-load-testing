@@ -37,6 +37,7 @@ dev = [
 lt-run = "scripts.run_load_test:main"
 lt-web = "scripts.run_load_test:web_ui"
 lt-rule-engine = "scripts.run_load_test:cli_rule_engine"
+lt-rule-engine-monitoring = "scripts.run_load_test:cli_rule_engine_monitoring"
 lt-rule-mgmt = "scripts.run_load_test:cli_rule_management"
 lt-trans-mgmt = "scripts.run_load_test:cli_transaction_management"
 
@@ -85,3 +86,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src", "scripts"]
+
