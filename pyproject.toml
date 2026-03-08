@@ -34,6 +34,7 @@ dev = [
 
 [project.scripts]
 # Load testing commands
+platform-adapter = "scripts.platform_adapter:main"
 lt-run = "scripts.run_load_test:main"
 lt-web = "scripts.run_load_test:web_ui"
 lt-rule-engine = "scripts.run_load_test:cli_rule_engine"

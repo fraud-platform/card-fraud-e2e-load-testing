@@ -1,0 +1,36 @@
+service: locust
+version: "1.0"
+entrypoints:
+  service:
+    status:
+      command: [uv, run, platform-adapter, service, status]
+      destructive: false
+      timeout_seconds: 60
+      mode: [suite]
+      description: Check Locust UI status.
+    health:
+      command: [uv, run, platform-adapter, service, health]
+      destructive: false
+      timeout_seconds: 60
+      mode: [suite]
+      description: Check Locust health endpoint.
+    logs:
+      command: [uv, run, platform-adapter, service, logs]
+      destructive: false
+      timeout_seconds: 60
+      mode: [suite]
+      description: Return logs guidance for Locust.
+  verify:
+    preflight:
+      command: [uv, run, platform-adapter, verify, preflight]
+      destructive: false
+      timeout_seconds: 30
+      mode: [suite]
+      description: Run load-test preflight command validation.
+  seed:
+    generate-users:
+      command: [uv, run, platform-adapter, seed, generate-users]
+      destructive: false
+      timeout_seconds: 30
+      mode: [suite]
+      description: Validate seed generator command availability.

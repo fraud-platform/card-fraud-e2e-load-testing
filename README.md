@@ -31,7 +31,6 @@ uv run lt-rule-mgmt --scenario seed-only --headless
 |---|---|---|
 | `RULE_ENGINE_AUTH_URL` | Rule engine runs | AUTH service base URL (default `http://localhost:8081`) |
 | `RULE_ENGINE_MONITORING_URL` | Monitoring runs | MONITORING service base URL (default `http://localhost:8082`) |
-| `RULE_ENGINE_URL` | Backward-compatible fallback | Legacy single rule-engine base URL (default `http://localhost:8081`) |
 | `RULE_MGMT_URL` | Rule mgmt runs | Rule Management base URL (default `http://localhost:8000`) |
 | `TRANSACTION_MGMT_URL` | Trans runs | Transaction Management base URL (default `http://localhost:8002`) |
 | `S3_ENDPOINT_URL` | No | MinIO/S3 endpoint (default `http://localhost:9000`) |

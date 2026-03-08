@@ -26,15 +26,15 @@ try:
     # Package-style imports (used by console script entry points).
     from src.utilities.minio_client import (
         cleanup_run_artifacts,
-        get_run_artifacts,
         publish_ruleset,
+        verify_artifact_exists,
     )
 except ModuleNotFoundError:
     # Backward-compatible imports when running with src on PYTHONPATH.
     from utilities.minio_client import (
         cleanup_run_artifacts,
-        get_run_artifacts,
         publish_ruleset,
+        verify_artifact_exists,
     )
 
 HEALTH_PATH_BY_SERVICE = {
@@ -105,6 +105,19 @@ class LoadTestHarness:
                 key = publish_ruleset(ruleset, self.bucket, self.run_id)
                 if key:
                     self.seeded_artifacts.append(key)
+
+                    # Also track the manifest key published alongside the ruleset.
+                    # publish_ruleset writes:
+                    # - rulesets/{env}/{country}/{ruleset_key}/v{version}/ruleset.json
+                    # - rulesets/{env}/{country}/{ruleset_key}/manifest.json
+                    try:
+                        parts = str(key).split("/")
+                        if len(parts) >= 2 and parts[-1] == "ruleset.json":
+                            # Drop "v{version}/ruleset.json" and add "manifest.json".
+                            manifest_key = "/".join(parts[:-2] + ["manifest.json"])
+                            self.seeded_artifacts.append(manifest_key)
+                    except Exception:
+                        pass
                     print(f"  Published: {key}")
                 else:
                     print(f"  FAILED to publish ruleset: {ruleset.get('ruleset_id', 'unknown')}")
@@ -118,13 +131,24 @@ class LoadTestHarness:
 
         # Validate artifacts are visible
         print("\nValidating artifact visibility...")
-        artifacts = get_run_artifacts(self.bucket, self.run_id, "rulesets")
-        if artifacts:
-            print(f"  Found {len(artifacts)} artifacts in bucket")
-            for artifact in artifacts[:5]:  # Show first 5
+        # Rulesets are published under canonical rule-management paths (rulesets/...),
+        # not under loadtest/{run_id}/..., so listing by run_id prefix is unreliable.
+        visible = []
+        missing = []
+        for key in self.seeded_artifacts:
+            if verify_artifact_exists(self.bucket, key):
+                visible.append(key)
+            else:
+                missing.append(key)
+
+        if visible:
+            print(f"  [OK] Found {len(visible)} uploaded artifacts")
+            for artifact in visible[:5]:
                 print(f"    - {artifact}")
-        else:
-            print("  WARNING: No artifacts found in bucket")
+        if missing:
+            print(f"  [WARN] {len(missing)} uploaded artifacts not yet visible")
+            for artifact in missing[:5]:
+                print(f"    - {artifact}")
 
         print(f"\nSeed phase complete. Artifacts tagged with run_id: {self.run_id}")
         return True

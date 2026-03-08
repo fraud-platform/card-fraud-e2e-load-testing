@@ -29,9 +29,8 @@ from utilities.reporting import report_generator  # noqa: E402
 # Environment Configuration
 # =============================================================================
 
-RULE_ENGINE_URL = os.getenv("RULE_ENGINE_URL", "http://localhost:8081")
-RULE_ENGINE_AUTH_URL = os.getenv("RULE_ENGINE_AUTH_URL", RULE_ENGINE_URL)
-RULE_ENGINE_MONITORING_URL = os.getenv("RULE_ENGINE_MONITORING_URL", RULE_ENGINE_AUTH_URL)
+RULE_ENGINE_AUTH_URL = os.getenv("RULE_ENGINE_AUTH_URL", "http://localhost:8081")
+RULE_ENGINE_MONITORING_URL = os.getenv("RULE_ENGINE_MONITORING_URL", "http://localhost:8082")
 RULE_MGMT_URL = os.getenv("RULE_MGMT_URL", "http://localhost:8000")
 TRANSACTION_MGMT_URL = os.getenv("TRANSACTION_MGMT_URL", "http://localhost:8002")
 OPS_ANALYST_URL = os.getenv("OPS_ANALYST_URL", "http://localhost:8003")
@@ -102,7 +101,11 @@ class RuleEngineUser(FastHttpUser):
     """
 
     config = SERVICE_CONFIGS["rule-engine"]
-    host = RULE_ENGINE_AUTH_URL
+    host = (
+        RULE_ENGINE_MONITORING_URL
+        if os.getenv("RULE_ENGINE_MODE", "auth").lower() == "monitoring"
+        else RULE_ENGINE_AUTH_URL
+    )
 
     def on_start(self):
         self.metrics = metrics_collector

@@ -238,7 +238,6 @@ Default combined outputs:
 
 | Variable | Required | Default/Notes |
 |---|---|---|
-| `RULE_ENGINE_URL` | Rule-engine runs | `http://localhost:8081` |
 | `RULE_MGMT_URL` | Rule-mgmt runs | `http://localhost:8000` |
 | `TRANSACTION_MGMT_URL` | Trans runs | `http://localhost:8002` |
 | `LOCAL_SIGNING_KEY` | For `local` | optional |

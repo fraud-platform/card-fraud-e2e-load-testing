@@ -265,6 +265,9 @@ def cleanup_run_artifacts(bucket: str, run_id: str) -> int:
     Returns:
         Number of artifacts deleted
     """
+    # Legacy cleanup path used by older harness versions.
+    # Current ruleset publishing uses canonical rule-management keys under rulesets/...
+    # (which are overwritten across runs), so run-scoped cleanup generally deletes 0 objects.
     prefix = f"loadtest/{run_id}/"
     keys = list_artifacts(bucket, prefix)
 
@@ -273,7 +276,10 @@ def cleanup_run_artifacts(bucket: str, run_id: str) -> int:
         if delete_artifact(bucket, key):
             deleted_count += 1
 
-    print(f"Cleaned up {deleted_count} artifacts for run {run_id}")
+    print(
+        f"Cleaned up {deleted_count} artifacts for run {run_id} "
+        f"(prefix {prefix})"
+    )
     return deleted_count
 
 

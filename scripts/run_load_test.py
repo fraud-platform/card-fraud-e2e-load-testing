@@ -22,7 +22,7 @@ from src.utilities.harness import LoadTestHarness
 LOCUSTFILE = "src/locustfile.py"
 
 SERVICE_URL_ENV = {
-    "rule-engine": ("RULE_ENGINE_URL", "http://localhost:8081"),
+    "rule-engine": ("RULE_ENGINE_AUTH_URL", "http://localhost:8081"),
     "rule-engine-monitoring": ("RULE_ENGINE_MONITORING_URL", "http://localhost:8082"),
     "rule-mgmt": ("RULE_MGMT_URL", "http://localhost:8000"),
     "trans-mgmt": ("TRANSACTION_MGMT_URL", "http://localhost:8002"),
@@ -34,6 +34,48 @@ SERVICE_HEALTH_PATH = {
     "rule-mgmt": "/api/v1/health",
     "trans-mgmt": "/api/v1/health",
 }
+
+
+def _bulk_load_rulesets(base_url: str, rulesets: list[dict]) -> bool:
+    """Load rulesets into the rule-engine registry via the bulk-load API."""
+    base_url = base_url.rstrip("/")
+    url = f"{base_url}/v1/evaluate/rulesets/bulk-load"
+    payload = {"rulesets": rulesets}
+    try:
+        response = httpx.post(url, json=payload, timeout=30.0)
+    except Exception as exc:
+        print(f"  [FAIL] bulk-load: {url} ({exc})")
+        return False
+
+    if response.status_code != 200:
+        print(f"  [FAIL] bulk-load: {url} (status {response.status_code})")
+        try:
+            print(f"  body: {response.text}")
+        except Exception:
+            pass
+        return False
+
+    try:
+        result = response.json()
+    except Exception:
+        print("  [FAIL] bulk-load: response was not JSON")
+        return False
+
+    requested = result.get("requested")
+    loaded = result.get("loaded")
+    errors = result.get("errors")
+
+    if errors:
+        print(f"  [WARN] bulk-load errors: {errors}")
+
+    if requested is None or loaded is None:
+        print(f"  [OK] bulk-load: {url} (loaded; response keys={list(result.keys())})")
+        return True
+
+    ok = int(loaded) == int(requested)
+    status = "[OK]" if ok else "[WARN]"
+    print(f"  {status} bulk-load: {url} (loaded {loaded} / requested {requested})")
+    return ok
 
 
 def _services_for_selection(selection: str) -> list[str]:
@@ -387,6 +429,45 @@ def main():
                 if not harness.seed(rulesets=rulesets):
                     print("ERROR: Seed phase failed")
                     sys.exit(1)
+
+                # Load rulesets into the target rule-engine registry.
+                if args.service in ["rule-engine", "rule-engine-monitoring", "all"]:
+                    load_targets: list[str] = []
+                    if args.service in ["rule-engine", "all"]:
+                        load_targets.append(
+                            os.getenv("RULE_ENGINE_AUTH_URL", "http://localhost:8081")
+                        )
+                    if args.service in ["rule-engine-monitoring"]:
+                        load_targets.append(
+                            os.getenv(
+                                "RULE_ENGINE_MONITORING_URL", "http://localhost:8082"
+                            )
+                        )
+
+                    # Build request payload based on what we just published.
+                    to_load = []
+                    seen = set()
+                    for rs in rulesets:
+                        key = rs.get("ruleset_key")
+                        version = rs.get("version", 1)
+                        country = rs.get("country", "US")
+                        if not key:
+                            continue
+                        ident = (key, int(version), str(country))
+                        if ident in seen:
+                            continue
+                        seen.add(ident)
+                        to_load.append(
+                            {
+                                "key": key,
+                                "version": int(version),
+                                "country": str(country),
+                            }
+                        )
+
+                    print("\nLoading seeded rulesets into registry...")
+                    for target in load_targets:
+                        _bulk_load_rulesets(target, to_load)
             else:
                 # Minimal seed for other services
                 harness.seed()
@@ -426,7 +507,9 @@ def main():
         elif args.service == "rule-engine":
             run_artifacts = run_rule_engine(users, spawn_rate, run_time, args.headless, harness)
         elif args.service == "rule-engine-monitoring":
-            run_artifacts = run_rule_engine_monitoring(users, spawn_rate, run_time, args.headless, harness)
+            run_artifacts = run_rule_engine_monitoring(
+                users, spawn_rate, run_time, args.headless, harness
+            )
         elif args.service == "rule-mgmt":
             run_artifacts = run_rule_management(users, spawn_rate, run_time, args.headless, harness)
         elif args.service == "trans-mgmt":
@@ -444,8 +527,8 @@ def main():
         if harness.enable_teardown:
             harness.teardown()
         urls = {
-            "rule-engine": os.getenv("RULE_ENGINE_AUTH_URL", os.getenv("RULE_ENGINE_URL", "http://localhost:8081")),
-            "rule-engine-auth": os.getenv("RULE_ENGINE_AUTH_URL", os.getenv("RULE_ENGINE_URL", "http://localhost:8081")),
+            "rule-engine": os.getenv("RULE_ENGINE_AUTH_URL", "http://localhost:8081"),
+            "rule-engine-auth": os.getenv("RULE_ENGINE_AUTH_URL", "http://localhost:8081"),
             "rule-engine-monitoring": os.getenv("RULE_ENGINE_MONITORING_URL", "http://localhost:8082"),
             "rule-mgmt": os.getenv("RULE_MGMT_URL", "http://localhost:8000"),
             "trans-mgmt": os.getenv("TRANSACTION_MGMT_URL", "http://localhost:8002"),
