@@ -186,7 +186,12 @@ uv run lt-rule-engine --scenario stress --users=1000 --spawn-rate=100 --run-time
 
 
 - `none`: no auth header
-- `local`: locally signed token
+- `local`: locally signed token or target-service local bypass, as selected by the target service
+
+The load harness does not perform Auth0 password-realm or browser logins and
+does not acquire one token per Locust user. Auth0 role-token helpers remain in
+the portal/rule-management projects; gateway or an explicitly local test
+configuration owns authentication for load runs.
 
 
 ---

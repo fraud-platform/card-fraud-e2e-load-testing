@@ -79,4 +79,3 @@ class InvestigationTaskset(TaskSet):
 
         if response.status_code == 200:
             self.user.metrics.increment("insights_get_success")
-

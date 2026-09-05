@@ -67,4 +67,3 @@ class MonitoringTaskset(TaskSet):
             "decision": random.choice(["APPROVE", "DECLINE"]),
             "timestamp": datetime.now(UTC).isoformat(),
         }
-

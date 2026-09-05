@@ -84,9 +84,16 @@ Supported modes:
   - Send no auth header
   - Useful when local bypass is enabled in target service
 
-  - Token cache required to avoid auth provider pressure
+  - If a caller supplies an upstream token, reuse it with an explicit bounded cache; the harness itself never obtains a password-realm token
 
   - Locally signed token for dev-only compatible services
+
+The harness does not log in to Auth0 for virtual users, scenarios, or tasks.
+The development `Local Test Client` and canonical role-user passwords belong
+to the portal/rule-management helpers. This boundary is intentional: a fresh
+password-realm request per test or virtual user can trigger Auth0 attack
+protection. Any future authenticated-load mode must define token ownership,
+renewal, and redaction before implementation.
 
 ---
 

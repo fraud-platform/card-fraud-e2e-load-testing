@@ -276,10 +276,7 @@ def cleanup_run_artifacts(bucket: str, run_id: str) -> int:
         if delete_artifact(bucket, key):
             deleted_count += 1
 
-    print(
-        f"Cleaned up {deleted_count} artifacts for run {run_id} "
-        f"(prefix {prefix})"
-    )
+    print(f"Cleaned up {deleted_count} artifacts for run {run_id} (prefix {prefix})")
     return deleted_count
 
 

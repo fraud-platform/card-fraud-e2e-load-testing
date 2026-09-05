@@ -1,5 +1,9 @@
 # Code Map
 
+Auth boundary: the load harness sends no Auth0 login traffic and no per-request
+`Authorization` header. Gateway configuration or a documented local bypass
+provides authentication for the selected system under test.
+
 ## Repository Purpose
 
 Locust-based local load and end-to-end validation harness across services.

@@ -289,4 +289,3 @@ if __name__ == "__main__":
 
     print("\nSample rule:")
     print(json.dumps(rule_gen.generate(), indent=2))
-

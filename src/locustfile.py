@@ -365,9 +365,7 @@ if __name__ == "__main__":
         "true" if args.service in ["all", "trans-mgmt"] else "false"
     )
     os.environ["TEST_RULE_MGMT"] = "true" if args.service in ["all", "rule-mgmt"] else "false"
-    os.environ["TEST_OPS_ANALYST"] = (
-        "true" if args.service in ["all", "ops-analyst"] else "false"
-    )
+    os.environ["TEST_OPS_ANALYST"] = "true" if args.service in ["all", "ops-analyst"] else "false"
 
     # Adjust config based on scenario
     if args.scenario == "smoke":
@@ -387,4 +385,3 @@ if __name__ == "__main__":
 
     sys.argv = ["locust"] + locust_args
     locust_main()
-

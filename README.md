@@ -24,6 +24,7 @@ uv run lt-rule-mgmt --scenario seed-only --headless
 - Scenarios are controlled by `--scenario` (`smoke`, `baseline`, `stress`, `soak`, `spike`, `seed-only`).
 - Runs use seed -> test -> teardown via `src/utilities/harness.py`.
 - Authentication and authorization are assumed to be handled by API Gateway upstream.
+- This harness does not log in to Auth0, use role passwords, or attach an `Authorization` header per request. A load run cannot create one Auth0 login per virtual user; configure gateway authentication or an explicitly local bypass in the target environment.
 
 ## Environment Variables
 
@@ -37,6 +38,10 @@ uv run lt-rule-mgmt --scenario seed-only --headless
 | `S3_ACCESS_KEY_ID` | No | S3 access key (default `minioadmin`) |
 | `S3_SECRET_ACCESS_KEY` | No | S3 secret key (default `minioadmin`) |
 | `S3_BUCKET_NAME` | No | Artifact bucket (default `fraud-gov-artifacts`) |
+
+Auth0 credentials such as `AUTH0_TEST_CLIENT_SECRET` do not belong in this
+harness. The development `Local Test Client` is owned by rule-management and
+is used only by role-specific portal/rule-management helpers.
 
 ## Outputs
 

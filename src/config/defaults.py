@@ -291,5 +291,3 @@ def get_scenario_config(scenario_name: str) -> dict:
     if scenario_name not in SCENARIOS:
         raise ValueError(f"Unknown scenario: {scenario_name}")
     return SCENARIOS[scenario_name]
-
-

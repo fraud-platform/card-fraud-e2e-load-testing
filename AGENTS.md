@@ -9,6 +9,7 @@ Applies to all assistants (Codex, Claude, ChatGPT, Cursor, Copilot, and similar 
 - Secrets: Doppler-only workflows. Do not create or commit `.env` files.
 - Commands: use repository wrappers from `pyproject.toml` or `package.json`; avoid ad-hoc commands.
 - Git hooks: run `git config core.hooksPath .githooks` after clone to enable pre-push guards.
+- Git workflow: work only on local `main`; do not create branches or linked worktrees. Push only `origin/main`. The pre-push guard covers Codex and Claude sessions; agents require `CARD_FRAUD_ALLOW_GIT_PUSH=1` for an explicitly requested push.
 - Docs publishing: keep only curated docs in `docs/01-setup` through `docs/07-reference`, plus `docs/README.md` and `docs/codemap.md`.
 - Docs naming: use lowercase kebab-case for docs files. Exceptions: `README.md`, `codemap.md`, and generated contract files.
 - Never commit docs/planning artifacts named `todo`, `status`, `archive`, or session notes.
@@ -45,6 +46,10 @@ Always:
 3. Keep seed/test/teardown behavior idempotent
 4. Keep docs in sync with implementation
 5. Preserve synthetic-only test data guarantees
+
+Auth boundary: this harness does not perform Auth0 login, use role passwords,
+or attach per-request bearer tokens. Auth0 role-token acquisition belongs to
+the portal/rule-management helpers, not to load-test virtual users.
 
 ## 3) Agent Workflow Contract
 
@@ -161,6 +166,11 @@ Backward-compatible fallback variables still supported:
 
 Authentication and authorization are handled by API Gateway.
 This harness does not attach per-request tokens.
+It must not be changed to perform a password-realm login for every virtual
+user or task; that would create avoidable Auth0 attack-protection traffic.
+When a future scenario needs authenticated traffic, acquire or inject a
+bounded, externally managed token at the gateway boundary and document its
+renewal policy first.
 
 ## 10) Scenarios
 

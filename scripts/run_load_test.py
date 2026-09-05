@@ -190,8 +190,7 @@ def run_rule_engine(
 ) -> dict:
     """Run Rule Engine load test."""
     print(
-        f"Starting Rule Engine load test: users={users}, "
-        f"spawn={spawn_rate}/s, duration={run_time}"
+        f"Starting Rule Engine load test: users={users}, spawn={spawn_rate}/s, duration={run_time}"
     )
 
     os.environ["TEST_RULE_ENGINE"] = "true"
@@ -229,7 +228,6 @@ def run_rule_engine(
 
     exit_code = _run_locust(args)
     return {"html": html_path, "csv_prefix": csv_prefix, "exit_code": exit_code}
-
 
 
 def run_rule_engine_monitoring(
@@ -285,10 +283,7 @@ def run_rule_management(
     harness: LoadTestHarness | None = None,
 ) -> dict:
     """Run Rule Management load test."""
-    print(
-        f"Starting Rule Mgmt load test: users={users}, "
-        f"spawn={spawn_rate}/s, duration={run_time}"
-    )
+    print(f"Starting Rule Mgmt load test: users={users}, spawn={spawn_rate}/s, duration={run_time}")
 
     os.environ["TEST_RULE_ENGINE"] = "false"
     os.environ["TEST_TRANSACTION_MGMT"] = "false"
@@ -329,10 +324,7 @@ def run_transaction_management(
     harness: LoadTestHarness | None = None,
 ) -> dict:
     """Run Transaction Management load test."""
-    print(
-        f"Starting Transaction Mgmt: users={users}, "
-        f"spawn={spawn_rate}/s, duration={run_time}"
-    )
+    print(f"Starting Transaction Mgmt: users={users}, spawn={spawn_rate}/s, duration={run_time}")
 
     os.environ["TEST_RULE_ENGINE"] = "false"
     os.environ["TEST_TRANSACTION_MGMT"] = "true"
@@ -399,6 +391,7 @@ def main():
     )
     if harness.start_time is None:
         from datetime import datetime
+
         harness.start_time = datetime.now()
 
     print(f"\n{'=' * 70}")
@@ -439,9 +432,7 @@ def main():
                         )
                     if args.service in ["rule-engine-monitoring"]:
                         load_targets.append(
-                            os.getenv(
-                                "RULE_ENGINE_MONITORING_URL", "http://localhost:8082"
-                            )
+                            os.getenv("RULE_ENGINE_MONITORING_URL", "http://localhost:8082")
                         )
 
                     # Build request payload based on what we just published.
@@ -522,6 +513,7 @@ def main():
     finally:
         if harness.end_time is None:
             from datetime import datetime
+
             harness.end_time = datetime.now()
         # TEARDOWN PHASE
         if harness.enable_teardown:
@@ -529,7 +521,9 @@ def main():
         urls = {
             "rule-engine": os.getenv("RULE_ENGINE_AUTH_URL", "http://localhost:8081"),
             "rule-engine-auth": os.getenv("RULE_ENGINE_AUTH_URL", "http://localhost:8081"),
-            "rule-engine-monitoring": os.getenv("RULE_ENGINE_MONITORING_URL", "http://localhost:8082"),
+            "rule-engine-monitoring": os.getenv(
+                "RULE_ENGINE_MONITORING_URL", "http://localhost:8082"
+            ),
             "rule-mgmt": os.getenv("RULE_MGMT_URL", "http://localhost:8000"),
             "trans-mgmt": os.getenv("TRANSACTION_MGMT_URL", "http://localhost:8002"),
         }
@@ -558,9 +552,7 @@ def main():
                 "protocol": os.getenv("REDIS_PROTOCOL"),
             },
             "traffic_mix": {
-                "rule_engine_auth_weight": (
-                    get_service_config("rule-engine").traffic_mix.preauth
-                ),
+                "rule_engine_auth_weight": (get_service_config("rule-engine").traffic_mix.preauth),
                 "rule_engine_monitoring_weight": (
                     get_service_config("rule-engine").traffic_mix.postauth
                 ),
@@ -628,7 +620,3 @@ def cli_transaction_management():
 
 if __name__ == "__main__":
     main()
-
-
-
-
