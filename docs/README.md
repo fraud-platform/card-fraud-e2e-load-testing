@@ -2,6 +2,9 @@
 
 Locust-based local load and end-to-end validation harness across services.
 
+Rule-management load runs use the configured list/read/create/version-update mix;
+the task wiring is covered by `tests/test_task_configuration.py`.
+
 Auth0 boundary: this repository does not perform Auth0 user logins, read role
 passwords, or attach per-request bearer tokens. Authentication is assumed at
 the upstream gateway; the portal and rule-management own role-specific local

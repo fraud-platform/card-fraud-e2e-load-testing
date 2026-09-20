@@ -5,7 +5,7 @@ description = "E2E and load testing suite for card fraud detection services"
 requires-python = ">=3.14"
 dependencies = [
     # Core
-    "locust==2.29.1",
+    "locust==2.46.6",
     "httpx>=0.27",
     "pydantic>=2.10",
     # Data generation
@@ -25,7 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 load-test = [
-    "locust==2.29.1",
+    "locust==2.46.6",
 ]
 dev = [
     "ruff>=0.8",

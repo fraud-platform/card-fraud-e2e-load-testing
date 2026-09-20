@@ -129,6 +129,7 @@ uv run gen-rules --count=100
 - Governance-focused API, low throughput
 - Tasksets: `src/tasksets/rule_management/`
 - Config source: `src/config/defaults.py` (`RuleManagementConfig`)
+- The default task wiring exercises the configured list, read, create, and rule-version update mix.
 
 ## 7) Source-of-Truth File Map
 

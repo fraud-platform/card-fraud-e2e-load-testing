@@ -234,6 +234,10 @@ def load_tasks_for_service(service_name: str) -> dict:
             tasks[rules.ListRulesTaskset] = int(config.traffic_mix.list_rules * 100)
         if config.traffic_mix.get_rule > 0:
             tasks[rules.GetRuleTaskset] = int(config.traffic_mix.get_rule * 100)
+        if config.traffic_mix.create_rule > 0:
+            tasks[rules.CreateRuleTaskset] = int(config.traffic_mix.create_rule * 100)
+        if config.traffic_mix.update_rule > 0:
+            tasks[rules.UpdateRuleTaskset] = int(config.traffic_mix.update_rule * 100)
 
         return tasks
 

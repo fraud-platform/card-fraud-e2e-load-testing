@@ -8,6 +8,9 @@ provides authentication for the selected system under test.
 
 Locust-based local load and end-to-end validation harness across services.
 
+Rule-management task wiring lives in `src/locustfile.py` and includes the
+configured read and write tasksets from `src/tasksets/rule_management/rules.py`.
+
 ## Documentation Layout
 
 - `01-setup/`: Setup

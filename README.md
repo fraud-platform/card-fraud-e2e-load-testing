@@ -23,6 +23,8 @@ uv run lt-rule-mgmt --scenario seed-only --headless
 - Service selection is controlled by `--service` (`all`, `rule-engine`, `rule-mgmt`, `trans-mgmt`).
 - Scenarios are controlled by `--scenario` (`smoke`, `baseline`, `stress`, `soak`, `spike`, `seed-only`).
 - Runs use seed -> test -> teardown via `src/utilities/harness.py`.
+- Rule-management runs honor the configured 50/30/10/10 mix for listing, reading,
+  creating, and versioning rules.
 - Authentication and authorization are assumed to be handled by API Gateway upstream.
 - This harness does not log in to Auth0, use role passwords, or attach an `Authorization` header per request. A load run cannot create one Auth0 login per virtual user; configure gateway authentication or an explicitly local bypass in the target environment.
 

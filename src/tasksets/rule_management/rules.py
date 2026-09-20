@@ -131,6 +131,61 @@ class CreateRuleTaskset(TaskSet):
         }
 
 
+class UpdateRuleTaskset(TaskSet):
+    """Create a new version for an existing rule."""
+
+    min_wait = 200  # ms
+    max_wait = 1000  # ms
+
+    @task(1)
+    @tag("rules", "update")
+    def update_rule(self):
+        """Create a valid next version for a recently listed rule."""
+        list_response = self.client.get(
+            "/api/v1/rules",
+            params={"limit": 1},
+            headers=self.user.headers,
+            name="GET /api/v1/rules (for update)",
+        )
+        if list_response.status_code != 200:
+            return
+
+        items = list_response.json().get("items", [])
+        if not items:
+            return
+
+        rule = items[0]
+        rule_id = rule.get("rule_id")
+        if not rule_id:
+            return
+
+        rule_type = str(rule.get("rule_type", "AUTH")).upper()
+        action = "REVIEW" if rule_type == "MONITORING" else "DECLINE"
+        expected_version = rule.get("current_version") or rule.get("version")
+        payload = {
+            "condition_tree": {
+                "field": "amount",
+                "operator": ">",
+                "value": random.randint(1000, 50000),
+            },
+            "priority": random.randint(1, 100),
+            "action": action,
+            "scope": {},
+        }
+        if expected_version is not None:
+            payload["expected_rule_version"] = expected_version
+
+        response = self.client.post(
+            f"/api/v1/rules/{rule_id}/versions",
+            json=payload,
+            headers=self.user.headers,
+            name="POST /api/v1/rules/{id}/versions",
+        )
+
+        if response.status_code in [200, 201]:
+            self.user.metrics.increment("rules_update_success")
+
+
 class RulesetTaskset(TaskSet):
     """
     Ruleset management task set.
